@@ -147,10 +147,16 @@ This is the Option A core flow: use official exports for team synchronization.
 ### 4.1 Create export from source environment
 
 ```bash
-docker compose exec ctfd sh -lc 'python export.py /tmp/ctfd-export-$(date +%Y%m%d-%H%M%S).zip && ls -1 /tmp/ctfd-export-*.zip | tail -n 1'
+docker compose exec ctfd sh -lc 'python manage.py export_ctf /tmp/ctfd-export-$(date +%Y%m%d-%H%M%S).zip && ls -1 /tmp/ctfd-export-*.zip | tail -n 1'
 ```
 
 Note: in this repository, `/opt/CTFd` is mounted read-only in the `ctfd` container, so exports should be written to a writable path like `/tmp`.
+
+Legacy equivalent (still available):
+
+```bash
+docker compose exec ctfd sh -lc 'python export.py /tmp/ctfd-export-$(date +%Y%m%d-%H%M%S).zip'
+```
 
 ### 4.2 Copy export artifact out of container (if needed)
 
@@ -164,16 +170,48 @@ docker cp "$CONTAINER_ID":"$LATEST_EXPORT" ./exports/
 ### 4.3 Import official export into local Docker stack
 
 ```bash
-docker compose exec ctfd python import.py /opt/CTFd/exports/<official-export>.zip
+docker compose exec ctfd python manage.py import_ctf /opt/CTFd/exports/<official-export>.zip
 ```
 
 This works when the zip is in host `./exports` because the project directory is mounted read-only at `/opt/CTFd` (read access is sufficient for import).
+
+Legacy equivalent (still available):
+
+```bash
+docker compose exec ctfd python import.py /opt/CTFd/exports/<official-export>.zip
+```
 
 ### 4.4 Recommended team sync convention
 
 - Keep official exports in `./exports/releases/`
 - Name format: `ctfd-content-vYYYY.MM.DD-HHMM.zip`
 - Import only approved snapshots into shared/staging/prod
+
+### 4.5 Mechanism selection (what to use when)
+
+Use the existing mechanisms based on scope of change:
+
+- Export + Import (ZIP)
+	- Use for full challenge set synchronization between environments.
+	- Preferred for release packaging and team-wide sync.
+	- CLI (current):
+		- `docker compose exec ctfd python manage.py export_ctf /tmp/<name>.zip`
+		- `docker compose exec ctfd python manage.py import_ctf /opt/CTFd/exports/<name>.zip`
+	- Legacy scripts still available in this repo:
+		- `python export.py`
+		- `python import.py <file.zip>`
+
+- Download CSV + Import CSV
+	- Use for targeted data exchange (users, teams, or challenges only).
+	- Best for small edits or partial merges without full environment overwrite.
+	- Admin UI path:
+		- Download CSV from Admin Config page (Export CSV form).
+		- Import CSV from Admin Config page (Import CSV form).
+	- Supported import types: `users`, `teams`, `challenges`.
+
+Rule of thumb:
+- If multiple challenge records/files changed across the event, use ZIP Export/Import.
+- If only specific table rows need to be shared or corrected, use CSV Download/Import.
 
 ---
 
@@ -290,3 +328,51 @@ This section defines how Content, Platform, QA, and Operations collaborate each 
 - Export artifact approved by all three leads (Content, QA, Platform).
 - Staging and production both running the same approved export version.
 - Smoke tests pass and on-call owner is assigned.
+
+### 7.8 Challenge build-share-sync protocol
+
+Use this protocol for every challenge update so all teams stay aligned.
+
+1. Build (Content Team)
+	- Create or update challenges in the source authoring instance.
+	- Validate required fields before packaging:
+	  - title and category
+	  - challenge description
+	  - flag and points/scoring mode
+	  - files, hints, tags, and visibility
+	- Run a self-check solve path before handing off.
+2. Package (Content Team)
+	- Choose package type based on change scope (see Section 4.5):
+	  - Full sync: export ZIP
+	  - Partial sync: CSV package (`challenges`, `users`, `teams` as needed)
+	- Save artifacts using release naming convention.
+	- Add release notes in the ticket with:
+	  - added challenges
+	  - modified challenges
+	  - removed or hidden challenges
+3. Share (Content Team -> Platform + QA)
+	- Place approved ZIP in `exports/releases/` for full syncs.
+	- For partial syncs, attach CSV files to the release ticket and list csv_type.
+	- Post ticket link and artifact names in the team channel.
+	- Mark handoff status as `ready-for-import`.
+4. Sync to staging (Platform Team)
+	- Import using the matching mechanism:
+	  - ZIP: Section 4.3 command
+	  - CSV: Admin Config -> Import CSV with matching csv_type
+	- Post import confirmation with artifact names and import time.
+	- Mark status as `ready-for-qa`.
+5. Verify sync integrity (QA Team)
+	- Confirm challenge counts match release notes.
+	- Spot-check all changed challenges end-to-end:
+	  - files downloadable
+	  - flags accepted/rejected correctly
+	  - hints and scoring behavior correct
+	- Mark status as `qa-pass` or `qa-fail` with blocker details.
+6. Promote to production (Platform + Operations)
+	- Only import artifacts marked `qa-pass`.
+	- Re-run smoke tests after import.
+	- Mark status as `released` with final artifact version.
+
+Status flow for challenge sync:
+- `draft` -> `ready-for-import` -> `ready-for-qa` -> `qa-pass` -> `released`
+- If QA fails: `qa-fail` -> Content fixes -> new artifact -> repeat from `ready-for-import`
