@@ -1,0 +1,170 @@
+# CI/CD Pipeline Documentation
+
+This document describes all automated workflows used to test, lint, and publish CTFd.
+
+---
+
+## Workflow Overview
+
+All CI/CD is managed via **GitHub Actions** (`.github/workflows/`).
+
+| Workflow File | Trigger | Purpose |
+|---|---|---|
+| `sqlite.yml` | push/PR → `master` | Unit tests against SQLite |
+| `mariadb.yml` | push/PR → `master` | Unit tests against MariaDB 10.11 |
+| `mysql.yml` | push/PR → `master` | Unit tests against MySQL 5.7 |
+| `mysql8.yml` | push/PR → `master` | Unit tests against MySQL 8.0 |
+| `postgres.yml` | push/PR → `master` | Unit tests against PostgreSQL |
+| `lint.yml` | push/PR → `master` | Python linting (isort, flake8) |
+| `verify-themes.yml` | push/PR → `master` | Theme asset verification |
+| `docker-build.yml` | GitHub Release published | Build + push Docker image |
+| `mirror-core-theme.yml` | push/PR → `master` | Mirrors theme to `core-theme` repo |
+
+---
+
+## Detailed Workflow Descriptions
+
+### Test Workflows (`sqlite.yml`, `mariadb.yml`, `mysql.yml`, `mysql8.yml`, `postgres.yml`)
+
+**Triggers:** `push` to `master`, `pull_request` targeting `master`
+
+**Python version matrix:** `3.11`
+
+**Steps in all test workflows:**
+
+```
+1. actions/checkout@v5
+2. actions/setup-python@v6 (Python 3.11, x64)
+3. Install deps:
+      pip install -r development.txt
+      yarn install (for JS tooling)
+      yarn global add prettier@1.17.0
+4. Run tests:
+      make test
+5. Upload coverage to Codecov (codecov/codecov-action@v5, file: coverage.xml)
+```
+
+**Database-specific service configs:**
+
+| Workflow | DB Image | Port | Connection String |
+|---|---|---|---|
+| `sqlite.yml` | — (in-process) | — | `sqlite://` |
+| `mariadb.yml` | `mariadb:10.11` | random → mapped | `mysql+pymysql://root:password@localhost:<port>/ctfd` |
+| `mysql.yml` | `mysql:5.7` | random → mapped | `mysql+pymysql://root:password@127.0.0.1:<port>/ctfd` |
+| `mysql8.yml` | `mysql:8.0` | random → mapped | `mysql+pymysql://root:password@127.0.0.1:<port>/ctfd` |
+| `postgres.yml` | `postgres:13` | random → mapped | `postgresql://postgres:postgres@localhost:<port>/ctfd` |
+
+The `TESTING_DATABASE_URL` environment variable controls which database the test suite uses.
+
+**Fake AWS credentials** are always set (for S3 uploader tests with mocked AWS):
+```env
+AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+---
+
+### Lint Workflow (`lint.yml`)
+
+**Triggers:** `push` to `master`, `pull_request` targeting `master`
+
+**Steps:**
+
+```
+1. actions/checkout@v5
+2. actions/setup-python@v6 (Python 3.11)
+3. pip install -r linting.txt
+4. isort --check-only .       ← import ordering check
+5. flake8 .                   ← PEP8 style check
+```
+
+Lint rules are in `.isort.cfg` and `.eslintrc.js`. Dev dependencies are in `linting.txt`.
+
+---
+
+### Theme Verification (`verify-themes.yml`)
+
+**Triggers:** `push` to `master`, `pull_request` targeting `master`
+
+Ensures bundled theme assets are up to date and correctly built. Runs `yarn` and checks for any unexpected diffs.
+
+---
+
+### Docker Build & Publish (`docker-build.yml`)
+
+**Triggers:** GitHub Release published (i.e. a new version tag)
+
+**Multi-architecture build:** `linux/amd64`, `linux/arm64`
+
+**Steps:**
+
+```
+1. actions/checkout@v5
+2. docker/setup-qemu-action@v3   ← QEMU for cross-platform builds
+3. docker/setup-buildx-action@v3 ← Docker Buildx
+4. docker/login-action@v3        ← Login to DockerHub
+5. docker/login-action@v3        ← Login to GHCR (ghcr.io)
+6. docker/build-push-action@v6   ← Build & push multi-arch image
+```
+
+**Tags pushed:**
+
+| Registry | Tags |
+|---|---|
+| DockerHub | `<repo>:latest`, `<repo>:<version>` |
+| GHCR | `ghcr.io/<repo>:latest`, `ghcr.io/<repo>:<version>` |
+
+**Required secrets:**
+
+| Secret | Purpose |
+|---|---|
+| `DOCKERHUB_USERNAME` | DockerHub login |
+| `DOCKERHUB_TOKEN` | DockerHub access token |
+| `GITHUB_TOKEN` | Auto-provided by GitHub for GHCR login |
+
+---
+
+## Makefile Commands
+
+The `Makefile` in the project root controls test execution:
+
+```bash
+make test       # Run full Python test suite
+make lint       # Run isort + flake8
+```
+
+Run tests locally with the same config as CI:
+
+```bash
+# SQLite (simplest - no external DB needed)
+TESTING_DATABASE_URL=sqlite:// make test
+
+# Against local MariaDB
+TESTING_DATABASE_URL=mysql+pymysql://root:password@localhost/ctfd make test
+```
+
+---
+
+## Release Process
+
+1. **Merge** feature branches into `master` via pull request
+2. Verify all CI checks pass (5 DB tests + lint + theme verification)
+3. Create a **GitHub Release** with a semantic version tag (e.g. `v3.9.0`)
+4. `docker-build.yml` triggers automatically, building and publishing the Docker image to DockerHub and GHCR
+
+---
+
+## Codecov Integration
+
+Coverage reports are uploaded after each test run via `codecov/codecov-action@v5`. Configuration lives in `.codecov.yml`. Coverage is reported from `coverage.xml` (generated by `pytest-cov`).
+
+---
+
+## Branch Protection Recommendations
+
+For the `master` branch, enforce:
+
+- Require all 5 test workflows to pass
+- Require lint to pass
+- Require at least 1 approving review
+- Dismiss stale reviews on push
