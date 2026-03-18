@@ -1,9 +1,466 @@
 {% extends "base.html" %}
 
+{% block stylesheets %}
+  {{ super() }}
+  {% if request.view_args and request.view_args.get('route') == 'index' %}
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet"/>
+    <style>
+      :root {
+        /* Green-leaning palette - harmonizes with matrix rain */
+        --neon-primary: #00ff88;      /* vivid matrix-adjacent green */
+        --neon-bright:  #39ff14;      /* pure matrix green for accents */
+        --neon-soft:    #00e5a0;      /* softer teal-green for text highlights */
+        --neon-cyan:    #00ffbf;      /* kept for legacy references */
+        --neon-green:   #39ff14;
+        --glass:        rgba(0, 8, 2, 0.52);   /* near-black with green tint, translucent */
+        --glass-inner:  rgba(0, 20, 8, 0.35);  /* slightly lighter for inner items */
+        --border:       rgba(0, 255, 136, 0.22);
+        --border-dim:   rgba(0, 255, 136, 0.10);
+        --text-main:    #d4f5e2;      /* off-white with faint green warmth */
+        --text-dim:     rgba(180, 240, 200, 0.5);
+      }
+
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      /* -- Overlay wrapper -- */
+      #cyber-siege-overlay {
+        position: relative;
+        z-index: 10;
+        min-height: calc(100vh - 8rem);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 7rem 2rem 6rem;
+        font-family: 'Rajdhani', sans-serif;
+        color: var(--text-main);
+        pointer-events: none; /* let clicks fall through to CTFd underneath */
+      }
+      #cyber-siege-overlay * { pointer-events: auto; }
+
+      /* -- Scanline overlay -- */
+      #cyber-siege-overlay::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 3px,
+          rgba(0,0,0,0.07) 3px,
+          rgba(0,0,0,0.07) 4px
+        );
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      /* -- Main card -- */
+      .siege-card {
+        max-width: 940px;
+        width: 100%;
+        background: var(--glass);
+        backdrop-filter: blur(10px) saturate(1.2);
+        -webkit-backdrop-filter: blur(10px) saturate(1.2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 3.1rem 3.25rem 2.85rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px rgba(0,255,136,0.05),
+          0 0 80px rgba(0,255,136,0.08),
+          0 0 160px rgba(0,255,80,0.04),
+          inset 0 1px 0 rgba(0,255,136,0.07),
+          inset 0 0 60px rgba(0,20,8,0.4);
+        animation: card-in 1s cubic-bezier(0.16,1,0.3,1) both;
+      }
+
+      @keyframes card-in {
+        from { opacity: 0; transform: translateY(28px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* corner brackets */
+      .siege-card::before,
+      .siege-card::after {
+        content: '';
+        position: absolute;
+        width: 22px; height: 22px;
+        border-color: var(--neon-primary);
+        border-style: solid;
+        opacity: 0.7;
+      }
+      .siege-card::before { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+      .siege-card::after  { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+      /* inner corner brackets */
+      .corner-tr, .corner-bl {
+        position: absolute;
+        width: 22px; height: 22px;
+        border-color: var(--neon-primary);
+        border-style: solid;
+        opacity: 0.7;
+      }
+      .corner-tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+      .corner-bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+
+      /* -- Top badge row -- */
+      .badge-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 2.2rem;
+        animation: fade-up 0.7s 0.2s both;
+      }
+
+      .badge {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border: 1px solid;
+        border-radius: 2px;
+      }
+      .badge-mmsu {
+        color: var(--neon-primary);
+        border-color: rgba(0,255,136,0.35);
+        background: rgba(0,255,136,0.06);
+      }
+      .badge-ccis {
+        color: var(--neon-bright);
+        border-color: rgba(57,255,20,0.3);
+        background: rgba(57,255,20,0.04);
+      }
+      .badge-honor {
+        color: var(--text-dim);
+        border-color: rgba(180,240,200,0.2);
+        background: transparent;
+      }
+      .badge-sep { flex: 1; height: 1px; background: linear-gradient(to right, rgba(0,255,136,0.2), transparent); }
+
+      /* -- Event label -- */
+      .event-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.76rem;
+        letter-spacing: 0.22em;
+        color: var(--neon-primary);
+        text-transform: uppercase;
+        margin-bottom: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: fade-up 0.7s 0.3s both;
+      }
+      .event-label::before {
+        content: '//';
+        opacity: 0.45;
+      }
+
+      /* -- Main Title -- */
+      .title-block {
+        margin-bottom: 1.6rem;
+        animation: fade-up 0.8s 0.4s both;
+      }
+      .title-main {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: clamp(2.4rem, 6vw, 4.2rem);
+        line-height: 1.0;
+        letter-spacing: 0.02em;
+        background: linear-gradient(
+          135deg,
+          #e8ffee 0%,
+          var(--neon-primary) 45%,
+          var(--neon-bright) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: none;
+        position: relative;
+      }
+
+      /* glitch flicker on title */
+      .title-main {
+        animation: glitch-idle 6s 1.5s infinite;
+      }
+      @keyframes glitch-idle {
+        0%,94%,100% { filter: none; transform: none; }
+        95% { filter: hue-rotate(90deg) brightness(1.3); transform: translateX(2px); }
+        96% { filter: none; transform: translateX(-1px); }
+        97% { filter: hue-rotate(-60deg); transform: none; }
+      }
+
+      .title-sub {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 400;
+        font-size: clamp(0.92rem, 2.05vw, 1.16rem);
+        letter-spacing: 0.35em;
+        text-transform: uppercase;
+        color: rgba(0,255,136,0.45);
+        margin-top: 0.4rem;
+      }
+
+      /* -- Divider -- */
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 1.6rem 0;
+        animation: fade-up 0.7s 0.55s both;
+      }
+      .divider-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, rgba(0,255,136,0.3), transparent); }
+      .divider-diamond {
+        width: 8px; height: 8px;
+        border: 1px solid var(--neon-primary);
+        transform: rotate(45deg);
+        opacity: 0.6;
+      }
+
+      /* -- Description -- */
+      .desc {
+        font-size: clamp(1.05rem, 2.35vw, 1.2rem);
+        font-weight: 300;
+        line-height: 1.82;
+        color: var(--text-main);
+        opacity: 0.85;
+        max-width: 700px;
+        margin-bottom: 2rem;
+        animation: fade-up 0.7s 0.65s both;
+      }
+      .desc strong {
+        color: var(--neon-primary);
+        font-weight: 600;
+      }
+
+      /* -- Info grid -- */
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 2.4rem;
+        animation: fade-up 0.7s 0.8s both;
+      }
+      .info-item {
+        border: 1px solid rgba(0,255,136,0.13);
+        background: var(--glass-inner);
+        border-radius: 3px;
+        padding: 12px 16px;
+        position: relative;
+      }
+      .info-item::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 3px; height: 100%;
+        background: var(--neon-primary);
+        opacity: 0.45;
+        border-radius: 3px 0 0 3px;
+      }
+      .info-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--neon-primary);
+        opacity: 0.6;
+        margin-bottom: 4px;
+      }
+      .info-value {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.03rem;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+
+      /* -- CTA Buttons -- */
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        animation: fade-up 0.7s 0.95s both;
+      }
+      .btn {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        padding: 13px 28px;
+        border-radius: 3px;
+        cursor: pointer;
+        border: none;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.15s, box-shadow 0.15s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #00ff88 0%, #00c96e 100%);
+        color: #001a08;
+        box-shadow: 0 0 20px rgba(0,255,136,0.35), 0 0 40px rgba(0,255,136,0.12);
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 30px rgba(0,255,136,0.55), 0 0 60px rgba(0,255,136,0.2);
+      }
+      .btn-secondary {
+        background: transparent;
+        color: var(--neon-primary);
+        border: 1px solid rgba(0,255,136,0.4);
+      }
+      .btn-secondary:hover {
+        background: rgba(0,255,136,0.06);
+        transform: translateY(-2px);
+        border-color: var(--neon-primary);
+      }
+
+      /* ripple on primary */
+      .btn-primary::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.25));
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .btn-primary:hover::after { opacity: 1; }
+
+      /* -- Status ticker -- */
+      .status-bar {
+        margin-top: 2.6rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        color: var(--text-dim);
+        animation: fade-up 0.7s 1.1s both;
+      }
+      .status-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--neon-green);
+        box-shadow: 0 0 8px var(--neon-green);
+        flex-shrink: 0;
+        animation: pulse-dot 2s infinite;
+      }
+      @keyframes pulse-dot {
+        0%,100% { opacity: 1; }
+        50%      { opacity: 0.35; }
+      }
+
+      /* shared fade-up */
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* -- Responsive -- */
+      @media (max-width: 600px) {
+        #cyber-siege-overlay { padding: 5.5rem 1rem 3.5rem; }
+        .siege-card { padding: 2.2rem 1.5rem 2rem; }
+        .badge-row  { flex-wrap: wrap; }
+      }
+    </style>
+  {% endif %}
+{% endblock %}
+
+{% block body_start %}
+  {% if request.view_args and request.view_args.get('route') == 'index' %}
+    <div id="cyber-siege-overlay">
+      <div class="siege-card">
+        <div class="corner-tr"></div>
+        <div class="corner-bl"></div>
+
+        <!-- Org badges -->
+        <div class="badge-row">
+          <span class="badge badge-mmsu">MMSU</span>
+          <span class="badge badge-ccis">CCIS</span>
+          <span class="badge badge-honor">Honor Society</span>
+          <span class="badge-sep"></span>
+        </div>
+
+        <!-- Event label -->
+        <div class="event-label">Capture The Flag &nbsp;·&nbsp; CTF Competition</div>
+
+        <!-- Title -->
+        <div class="title-block">
+          <div class="title-main">CCIS Cyber Siege</div>
+          <div class="title-sub">Flagship CTF Event</div>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider">
+          <div class="divider-line"></div>
+          <div class="divider-diamond"></div>
+          <div class="divider-line"></div>
+        </div>
+
+        <!-- Description -->
+        <p class="desc">
+          A CCIS flagship CTF that builds <strong>ethical hacking</strong>,
+          <strong>problem-solving</strong>, and <strong>teamwork</strong> skills -
+          aligned with our vision of shaping <strong>industry-ready cybersecurity leaders</strong>
+          at Mariano Marcos State University.
+        </p>
+
+        <!-- Info grid -->
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Hosted by</div>
+            <div class="info-value">CCIS · MMSU</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Platform</div>
+            <div class="info-value">CTFd</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Format</div>
+            <div class="info-value">Jeopardy Style</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Coordinated with</div>
+            <div class="info-value">Honor Society</div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="cta-row">
+          <a href="/register" class="btn btn-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            Register
+          </a>
+          <a href="/login" class="btn btn-secondary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Login
+          </a>
+        </div>
+
+        <!-- Status -->
+        <div class="status-bar">
+          <span class="status-dot"></span>
+          <span>SYS_STATUS: COMPETITION ONLINE &nbsp;//&nbsp; GOOD LUCK, HACKER</span>
+        </div>
+
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
 {% block content %}
-  <div class="container">
-    {{ content | safe }}
-  </div>
+  {% if request.view_args and request.view_args.get('route') == 'index' %}
+    {# Home uses custom overlay only; default page HTML content intentionally omitted. #}
+  {% else %}
+    <div class="container">
+      {{ content | safe }}
+    </div>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

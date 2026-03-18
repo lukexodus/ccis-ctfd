@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-bs-theme="dark">
 <head>
   <title>{{ title or Configs.ctf_name }}</title>
   <meta charset="utf-8">
@@ -10,11 +10,37 @@
 
   {% block stylesheets %}
     {{ Assets.css("assets/scss/main.scss") }}
+    <style>
+      #matrix-bg-frame {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        z-index: -1;
+        pointer-events: none;
+      }
+
+      body {
+        background: transparent;
+      }
+
+      nav,
+      main,
+      footer,
+      .toast-container,
+      .modal {
+        position: relative;
+        z-index: 1;
+      }
+    </style>
   {% endblock %}
 
   {{ Plugins.styles }}
 
-  {{ Assets.js("assets/js/color_mode_switcher.js", type=None) }}
+  <script>
+    document.documentElement.setAttribute("data-bs-theme", "dark");
+  </script>
 
   <script type="text/javascript">
       window.init = {
@@ -40,6 +66,18 @@
   {{ Configs.theme_header }}
 </head>
 <body>
+<iframe
+  id="matrix-bg-frame"
+  src="{{ url_for('views.themes', path='assets/bg-matrix-page.html') }}"
+  title="Matrix Background"
+  loading="eager"
+  aria-hidden="true"
+  tabindex="-1"
+></iframe>
+
+{% block body_start %}
+{% endblock %}
+
 {% include "components/navbar.html" %}
 
 <main role="main">
