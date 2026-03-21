@@ -38,3 +38,49 @@
     }
   }
 }
+
+.challenge-tag.badge {
+  background-color: color-mix(in srgb, var(--bs-success) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bs-success) 55%, var(--bs-dark));
+  color: color-mix(in srgb, var(--bs-success) 85%, white);
+}
+
+.challenge-file-btn,
+.challenge-next-btn,
+.challenge-share-btn {
+  background-color: color-mix(in srgb, var(--bs-success) 22%, var(--bs-dark));
+  border-color: color-mix(in srgb, var(--bs-success) 48%, var(--bs-dark));
+  color: color-mix(in srgb, var(--bs-success) 90%, white);
+
+  &:hover,
+  &:focus {
+    background-color: color-mix(in srgb, var(--bs-success) 30%, var(--bs-dark));
+    border-color: color-mix(in srgb, var(--bs-success) 62%, var(--bs-dark));
+    color: color-mix(in srgb, var(--bs-success) 96%, white);
+  }
+}
+
+.challenge-share-icon-btn {
+  border-color: color-mix(in srgb, var(--bs-success) 45%, var(--bs-dark));
+  color: color-mix(in srgb, var(--bs-success) 88%, white);
+
+  &:hover,
+  &:focus {
+    background-color: color-mix(in srgb, var(--bs-success) 18%, var(--bs-dark));
+    color: color-mix(in srgb, var(--bs-success) 96%, white);
+  }
+}
+
+.challenge-response-alert.alert {
+  border-width: 1px;
+}
+
+.challenge-response-alert .text-muted,
+.challenge-attribution.text-muted,
+.challenge-ratings.text-muted {
+  color: color-mix(in srgb, var(--bs-success) 70%, var(--bs-body-color)) !important;
+}
+
+.challenge-history-table.table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-accent-bg: color-mix(in srgb, var(--bs-success) 8%, transparent);
+}
