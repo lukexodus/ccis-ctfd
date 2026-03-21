@@ -22,6 +22,39 @@
 
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+      /* ── Force backdrop behind everything clickable ── */
+.modal-backdrop {
+  z-index: 1040 !important;
+  position: fixed !important;
+  pointer-events: none !important;
+}
+.modal {
+  z-index: 1050 !important;
+  pointer-events: auto !important;
+}
+.modal-dialog {
+  pointer-events: auto !important;
+}
+.modal-content {
+  pointer-events: auto !important;
+}
+
+/* ── Matrix canvas — must be lowest ── */
+canvas#matrix,
+canvas {
+  z-index: -1 !important;
+  position: fixed !important;
+  pointer-events: none !important;
+}
+
+/* ── Prevent any overlay div from eating clicks ── */
+#cyber-siege-overlay {
+  pointer-events: none !important;
+}
+#cyber-siege-overlay * {
+  pointer-events: auto !important;
+}
+
       /* -- Overlay wrapper -- */
       #cyber-siege-overlay {
         position: relative;
