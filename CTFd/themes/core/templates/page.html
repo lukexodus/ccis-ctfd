@@ -34,58 +34,6 @@
     }
   </style>
 
-  <!-- GLOBAL: Modal click fix -->
-  <script>
-  document.addEventListener('DOMContentLoaded', function () {
-
-    // Fix 1: Remove backdrop entirely when modal closes
-    document.addEventListener('hidden.bs.modal', function () {
-      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-      document.body.classList.remove('modal-open');
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    });
-
-    // Fix 2: If backdrop exists and modal is not open, nuke it
-    setInterval(function () {
-      const backdrops = document.querySelectorAll('.modal-backdrop');
-      const openModals = document.querySelectorAll('.modal.show');
-      if (backdrops.length > 0 && openModals.length === 0) {
-        backdrops.forEach(el => el.remove());
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-      }
-    }, 300);
-
-    // Fix 3: Force pointer-events on backdrop via JS (overrides any CSS conflict)
-    const observer = new MutationObserver(function (mutations) {
-      mutations.forEach(function () {
-        document.querySelectorAll('.modal-backdrop').forEach(function (el) {
-          el.style.pointerEvents = 'none';
-          el.style.zIndex = '1040';
-        });
-        document.querySelectorAll('.modal').forEach(function (el) {
-          el.style.pointerEvents = 'auto';
-          el.style.zIndex = '1050';
-        });
-        document.querySelectorAll('canvas').forEach(function (el) {
-          el.style.pointerEvents = 'none';
-          el.style.zIndex = '-1';
-        });
-      });
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style']
-    });
-
-  });
-  </script>
-
   {% if request.view_args and request.view_args.get('route') == 'index' %}
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet"/>
     <style>

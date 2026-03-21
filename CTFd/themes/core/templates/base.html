@@ -105,6 +105,38 @@
 
 {{ Plugins.scripts }}
 
+<!-- Remove stale modal backdrops on page load and monitor for orphans -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // Immediately remove any backdrop present on load
+  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+  document.body.classList.remove('modal-open');
+  document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
+
+  // Also clean up whenever a modal closes
+  document.addEventListener('hidden.bs.modal', function () {
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+  });
+
+  // Safety net — keep watching for orphaned backdrops
+  setInterval(function () {
+    const openModals = document.querySelectorAll('.modal.show');
+    if (openModals.length === 0) {
+      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+  }, 500);
+
+});
+</script>
+
 {{ Configs.theme_footer }}
 </body>
 </html>
