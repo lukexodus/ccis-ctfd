@@ -16,6 +16,24 @@ function addTargetBlank(html) {
   return view.documentElement.outerHTML;
 }
 
+function cleanupModalArtifacts() {
+  document.querySelectorAll(".modal-backdrop").forEach(el => el.remove());
+  document.body.classList.remove("modal-open");
+  document.body.style.overflow = "";
+  document.body.style.paddingRight = "";
+}
+
+function resetChallengeWindow(modalEl) {
+  if (!modalEl) {
+    return;
+  }
+
+  modalEl.classList.remove("show");
+  modalEl.style.display = "none";
+  modalEl.setAttribute("aria-hidden", "true");
+  modalEl.removeAttribute("aria-modal");
+}
+
 window.Alpine = Alpine;
 
 Alpine.store("challenge", {
@@ -270,6 +288,15 @@ Alpine.data("ChallengeBoard", () => ({
   challenge: null,
 
   async init() {
+    Alpine.store("challenge").data = { view: "" };
+    resetChallengeWindow(this.$refs.challengeWindow);
+    cleanupModalArtifacts();
+
+    this.$refs.challengeWindow.addEventListener("hidden.bs.modal", () => {
+      history.replaceState(null, null, " ");
+      cleanupModalArtifacts();
+    });
+
     this.challenges = await CTFd.pages.challenges.getChallenges();
     this.loaded = true;
 
@@ -343,17 +370,11 @@ Alpine.data("ChallengeBoard", () => ({
 
       // nextTick is required here because we're working in a callback
       Alpine.nextTick(() => {
-        let modal = Modal.getOrCreateInstance("[x-ref='challengeWindow']");
-        // TODO: Get rid of this private attribute access
-        // See https://github.com/twbs/bootstrap/issues/31266
-        modal._element.addEventListener(
-          "hidden.bs.modal",
-          event => {
-            // Remove location hash
-            history.replaceState(null, null, " ");
-          },
-          { once: true },
-        );
+        cleanupModalArtifacts();
+        const modalEl = this.$refs.challengeWindow;
+        resetChallengeWindow(modalEl);
+
+        let modal = Modal.getOrCreateInstance(modalEl);
         modal.show();
         history.replaceState(null, null, `#${challenge.data.name}-${challengeId}`);
       });

@@ -105,48 +105,6 @@
 
 {{ Plugins.scripts }}
 
-<!-- Fix: Reset challenge modal and backdrops on page load -->
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-  // Fix 1: Reset the challenge window modal to hidden on load
-  // (CTFd renders it with display: block and show class by default)
-  const challengeWindow = document.getElementById('challenge-window');
-  if (challengeWindow) {
-    challengeWindow.classList.remove('show');
-    challengeWindow.style.display = 'none';
-    challengeWindow.setAttribute('aria-hidden', 'true');
-    challengeWindow.removeAttribute('aria-modal');
-  }
-
-  // Fix 2: Remove any stale backdrop present on load
-  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-  document.body.classList.remove('modal-open');
-  document.body.style.overflow = '';
-  document.body.style.paddingRight = '';
-
-  // Fix 3: Clean up when modal closes
-  document.addEventListener('hidden.bs.modal', function () {
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-  });
-
-  // Fix 4: Safety net — keep watching for orphaned backdrops
-  setInterval(function () {
-    const openModals = document.querySelectorAll('.modal.show');
-    if (openModals.length === 0) {
-      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-      document.body.classList.remove('modal-open');
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    }
-  }, 500);
-
-});
-</script>
-
 {{ Configs.theme_footer }}
 </body>
 </html>
